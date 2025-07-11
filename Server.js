@@ -8,13 +8,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Neon connection setup
+// database connection 
 const pool = new Pool({
   connectionString: process.env.NEON_CONNECTION_STRING,
   ssl: true
 });
 
-// Get user score endpoint
+// fetch the score of the connected bhosdu
 app.get('/get-score', async (req, res) => {
   try {
     const { wallet } = req.query;
@@ -34,7 +34,7 @@ app.get('/get-score', async (req, res) => {
   }
 });
 
-// Update score endpoint
+// update the score of the connected bhosdu
 app.post('/update-score', async (req, res) => {
   try {
     const { wallet, score } = req.body;
