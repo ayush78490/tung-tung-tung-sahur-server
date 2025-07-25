@@ -5,8 +5,26 @@ const cors = require('cors');
 
 const app = express();
 
+const allowedOrigins = [
+  'https://tung-tung-tung-sahur-three.vercel.app',
+  'http://localhost:3000' // For local development
+];
+
 // Middleware setup
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,27 +89,29 @@ app.get('/get-score', async (req, res) => {
 // Update user score endpoint
 app.post('/update-score', async (req, res) => {
   try {
+    console.log('Received request body:', req.body); // Log incoming request
+    
     const { wallet, score } = req.body;
 
-    console.log('[BACKEND] Update request:', { wallet, score });
-
-    // Input validation
-    if (!isValidWallet(wallet)) {
+    // Validate input
+    if (!wallet) {
       return res.status(400).json({ 
         success: false,
-        error: 'Invalid wallet address' 
+        error: 'Validation Error',
+        message: 'Wallet address is required',
+        received: req.body
       });
     }
 
-    if (typeof score !== 'number' || score < 0) {
+    if (typeof score !== 'number') {
       return res.status(400).json({ 
         success: false,
-        error: 'Invalid score value',
-        details: 'Score must be a positive number'
+        error: 'Validation Error',
+        message: 'Score must be a number',
+        received: typeof score
       });
     }
 
-    // Database operation
     const result = await pool.query(
       `INSERT INTO users (wallet_address, score)
        VALUES ($1, $2)
@@ -104,16 +124,16 @@ app.post('/update-score', async (req, res) => {
     res.json({ 
       success: true,
       wallet,
-      newScore: result.rows[0].score,
-      message: 'Score updated successfully'
+      newScore: result.rows[0].score
     });
-
+    
   } catch (error) {
-    console.error('[BACKEND] Error:', error);
+    console.error('Update score error:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Internal server error',
-      details: error.message 
+      error: 'Internal Server Error',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
